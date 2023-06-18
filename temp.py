@@ -7,29 +7,34 @@
 # from openpyxl.styles import PatternFill, Font, Color, Alignment
 # from openpyxl.styles.differential import DifferentialStyle
 # from openpyxl.formatting.rule import Rule, ColorScaleRule
+from engineering_notation import EngNumber
 from funcoes_desbalanco_neutro import *
 
 
 # %%
+
+a = 1*np.exp(-1j*2*np.pi/3)
+
+nr_lin_int = 1
+nr_col_int = 1
+
+nr_lin_ext = 1
+nr_col_ext = 1
+
+potencia_nominal_trifásica = 10e6
 omega = 2*np.pi*60
 tensao_nominal_fase_fase = 69e3
 Vff = tensao_nominal_fase_fase*np.sqrt(3)*np.exp(+1j*np.pi/6)
-a = 1*np.exp(-1j*2*np.pi/3)
+tensao_fase_neutro = tensao_nominal_fase_fase/np.sqrt(3)
+corrente_fase_neutro = ( potencia_nominal_trifásica/3 ) / tensao_fase_neutro
+reatancia = tensao_fase_neutro / corrente_fase_neutro
+corrente_nominal_lata = corrente_fase_neutro / nr_col_ext
 
-nr_lin_int = 2
-nr_col_int = 2
+cap_interna = 1 / (omega*reatancia)
+des_int = 0.0
 
-nr_lin_ext = 5
-nr_col_ext = 8
-
-potencia_nominal_trifásica = 100e6
-
-tensao_fase_entro = tensao_nominal_fase_fase/np.sqrt(3)
-reatancia = tensao_nominal_fase_fase**2 / potencia_nominal_trifásica
-corrente_nominal_lata = tensao_fase_entro / reatancia
-
-cap_interna = 1/(omega*reatancia)
-des_int = 0.33
+print("corrente_nominal_lata = corrente_fase_neutro / nr_col_ext = ", corrente_nominal_lata)
+print("cap_interna = 1 / (omega*reatancia) = ", EngNumber(cap_interna))
 
 # %% gerar matriz no excel
 wb, matriz = matriz_fases_ramos(nr_lin_ext=nr_lin_ext, nr_col_ext=nr_col_ext, nr_lin_int=nr_lin_int, nr_col_int=nr_col_int, cap_interna=cap_interna, des_int=des_int)
@@ -95,6 +100,7 @@ I_ao = matriz_correntes_fase[0]
 I_bo = matriz_correntes_fase[1]
 I_co = matriz_correntes_fase[2]
 
+
 # %% Começa o caminho inverso
 # %% Fase A
 
@@ -109,115 +115,28 @@ with pd.ExcelWriter('capacitancias_nas_latas.xlsx', engine='openpyxl') as writer
     df_Ca_eq_int.to_excel(writer, sheet_name='df_Ca_eq_int', index=False, header=False)
 
 # %%
-I_a1 = V_ao * (1j*omega*eq_serie_externos_A1)
-V_a1_ser = I_a1 * 1 / (1j*omega*eq_paral_externos_A1)
-V_a1_ser = V_a1_ser.reshape(-1, 1) # necessário para transformar em matriz com uma coluna
-I_a1_par = V_a1_ser * (1j*omega*eq_serie_internos_A1)
+I_a1, V_a1_ser, I_a1_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_A1, eq_paral_externos_A1, eq_serie_internos_A1)
+I_a2, V_a2_ser, I_a2_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_A2, eq_paral_externos_A2, eq_serie_internos_A2)
+I_a_par = np.hstack((I_a1_par, I_a2_par))
+df_I_a_par = pd.DataFrame(np.abs(I_a_par))
 
-I_a2 = V_ao * (1j*omega*eq_serie_externos_A2)
-V_a2_ser = I_a2 * 1 / (1j*omega*eq_paral_externos_A2)
-V_a2_ser = V_a2_ser.reshape(-1, 1) # necessário para transformar em matriz com uma coluna
-I_a2_par = V_a2_ser * (1j*omega*eq_serie_internos_A2)
+I_b1, V_b1_ser, I_b1_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_B1, eq_paral_externos_B1, eq_serie_internos_B1)
+I_b2, V_b2_ser, I_b2_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_B2, eq_paral_externos_B2, eq_serie_internos_B2)
+I_b_par = np.hstack((I_b1_par, I_b2_par))
+df_I_b_par = pd.DataFrame(np.abs(I_b_par))
 
-df_I_a1_par = pd.DataFrame(np.abs(I_a1_par))
+I_c1, V_c1_ser, I_c1_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_C1, eq_paral_externos_C1, eq_serie_internos_C1)
+I_c2, V_c2_ser, I_c2_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_C2, eq_paral_externos_C2, eq_serie_internos_C2)
+I_c_par = np.hstack((I_c1_par, I_c2_par))
+df_I_c_par = pd.DataFrame(np.abs(I_c_par))
+
 with pd.ExcelWriter('correntes_nas_latas.xlsx', engine='openpyxl') as writer:
-    df_I_a1_par.to_excel(writer, sheet_name='df_I_a1_par', index=False, header=False)
+    df_I_a_par.to_excel(writer, sheet_name='df_I_a_par', index=False, header=False)
+    df_I_b_par.to_excel(writer, sheet_name='df_I_b_par', index=False, header=False)
+    df_I_c_par.to_excel(writer, sheet_name='df_I_c_par', index=False, header=False)
 
-destaca_maiores_que_nominal(planilha='df_I_a1_par', aquivo='correntes_nas_latas.xlsx', valor_nominal=corrente_nominal_lata)
+destaca_maiores_que_nominal(planilha='df_I_a_par', aquivo='correntes_nas_latas.xlsx', valor_nominal=corrente_nominal_lata)
+destaca_maiores_que_nominal(planilha='df_I_b_par', aquivo='correntes_nas_latas.xlsx', valor_nominal=corrente_nominal_lata)
+destaca_maiores_que_nominal(planilha='df_I_c_par', aquivo='correntes_nas_latas.xlsx', valor_nominal=corrente_nominal_lata)
 # %%
 
-#
-#
-#
-# # Valores iniciais do Y equivalente dos dois ramos
-# Iao = matriz_correntes_fase[0]
-# Vao = matriz_tensoes_Vabco[0]
-#
-# # Separando por ramos
-# Ia1 = Vao / (1j*omega*eq_serie_externos_A1)
-# Ia2 = Vao / (1j*omega*eq_serie_externos_A2)
-#
-#
-#
-#
-#
-#
-#
-#
-#
-#
-# # Tensoes em cada capacitor série equivalente
-# Va1_paral = Ia1 / (1j*eq_paral_externos_A1)
-# Va2_paral = Ia2 / (1j*eq_paral_externos_A1)
-#
-# # Cada capacitor série é o equivalente de várias latas em paralelo
-# Ia1_paral = Va1_paral * (1j*omega*eq_serie_internos_A1)
-# Ia2_paral = Va2_paral * (1j*omega*eq_serie_internos_A1)
-#
-# Va1_serie_1 = Ia1_paral / (1j*omega*eq_serie_internos_A1)
-# Va1_serie_2 = Ia2_paral / (1j*omega*eq_serie_internos_A1)
-#
-#
-# tensoes_latas_A = np.ones((nr_lin_ext, 2*nr_col_ext), dtype=complex)
-# tensoes_latas_A[:, :nr_col_ext] = Va1_paral
-# tensoes_latas_A[:, nr_col_ext:] = Va2_paral
-# df_A = pd.DataFrame(np.abs(tensoes_latas_A))
-#
-#
-# #  %%
-#
-# # # %% Juntando as três fases e colocando no excel
-# # # %% tensoes
-# # tensoes_latas_A = np.ones((nr_lin_ext, 2*nr_col_ext), dtype=complex)
-# # tensoes_latas_A[:, :nr_col_ext] = Va1_paral
-# # tensoes_latas_A[:, nr_col_ext:] = Va2_paral
-# # df_A = pd.DataFrame(np.abs(tensoes_latas_A))
-# #
-# # tensoes_latas_B = np.ones((nr_lin_ext, 2*nr_col_ext), dtype=complex)
-# # tensoes_latas_B[:, :nr_col_ext] = Vb1_paral
-# # tensoes_latas_B[:, nr_col_ext:] = Vb2_paral
-# # df_B = pd.DataFrame(np.abs(tensoes_latas_B))
-# # print(df_B)
-# #
-# # tensoes_latas_C = np.ones((nr_lin_ext, 2*nr_col_ext), dtype=complex)
-# # tensoes_latas_C[:, :nr_col_ext] = Vc1_paral
-# # tensoes_latas_C[:, nr_col_ext:] = Vc2_paral
-# # df_C = pd.DataFrame(np.abs(tensoes_latas_C))
-# #
-# #
-# # with pd.ExcelWriter('tensoes_nas_latas.xlsx', engine='openpyxl') as writer:
-# #     df_A.to_excel(writer, sheet_name='Va', index=False, header=False)
-# #     df_B.to_excel(writer, sheet_name='Vb', index=False, header=False)
-# #     df_C.to_excel(writer, sheet_name='Vc', index=False, header=False)
-# #
-# # destaca_maiores_que_nominal(planilha='Va', aquivo='tensoes_nas_latas.xlsx', valor_nominal=14.43)
-# # destaca_maiores_que_nominal(planilha='Vb', aquivo='tensoes_nas_latas.xlsx', valor_nominal=14.43)
-# # destaca_maiores_que_nominal(planilha='Vc', aquivo='tensoes_nas_latas.xlsx', valor_nominal=14.43)
-# #
-# # # %% correntes
-# # correntes_latas_A = np.ones((nr_lin_ext, 2*nr_col_ext), dtype=complex)
-# # correntes_latas_A[:, :nr_col_ext] = Ia1_paral
-# # correntes_latas_A[:, nr_col_ext:] = Ia2_paral
-# # df_A = pd.DataFrame(np.abs(correntes_latas_A))
-# #
-# # correntes_latas_B = np.ones((nr_lin_ext, 2*nr_col_ext), dtype=complex)
-# # correntes_latas_B[:, :nr_col_ext] = Ib1_paral
-# # correntes_latas_B[:, nr_col_ext:] = Ib2_paral
-# # df_B = pd.DataFrame(np.abs(correntes_latas_B))
-# #
-# # correntes_latas_C = np.ones((nr_lin_ext, 2*nr_col_ext), dtype=complex)
-# # correntes_latas_C[:, :nr_col_ext] = Ic1_paral
-# # correntes_latas_C[:, nr_col_ext:] = Ic2_paral
-# # df_C = pd.DataFrame(np.abs(correntes_latas_C))
-# #
-# # with pd.ExcelWriter('correntes_nas_latas.xlsx', engine='openpyxl') as writer:
-# #     df_A.to_excel(writer, sheet_name='Ia', index=False, header=False)
-# #     df_B.to_excel(writer, sheet_name='Ib', index=False, header=False)
-# #     df_C.to_excel(writer, sheet_name='Ic', index=False, header=False)
-#
-#
-# destaca_maiores_que_nominal(planilha='Ia', aquivo='correntes_nas_latas.xlsx', valor_nominal=72.16)
-# destaca_maiores_que_nominal(planilha='Ib', aquivo='correntes_nas_latas.xlsx', valor_nominal=72.16)
-# destaca_maiores_que_nominal(planilha='Ic', aquivo='correntes_nas_latas.xlsx', valor_nominal=72.16)
-#
-#

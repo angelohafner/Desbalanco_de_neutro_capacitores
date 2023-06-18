@@ -106,3 +106,30 @@ def matrizes_internas(matriz_FR, nr_lin_ext, nr_col_ext, nr_lin_int,  nr_col_int
             eq_serie_internos[i_ext, j_ext] = 1 / np.sum(1 / eq_paral_internos[i_ext * nr_lin_int:i_ext * nr_lin_int + nr_lin_int, j_ext])
 
     return super_matriz_FR, eq_paral_internos, eq_serie_internos
+
+# %%
+def calcular_corrente_tensao(V_ao, omega, eq_serie_externos_A1, eq_paral_externos_A1, eq_serie_internos_A1):
+    I_a1 = V_ao * (1j*omega*eq_serie_externos_A1)
+    V_a1_ser = I_a1 * 1 / (1j*omega*eq_paral_externos_A1)
+    V_a1_ser = V_a1_ser.reshape(-1, 1) # necessário para transformar em matriz com uma coluna
+    I_a1_par = V_a1_ser * (1j*omega*eq_serie_internos_A1)
+    return I_a1, V_a1_ser, I_a1_par
+
+# %%
+def calcular_e_concatenar(V_ao, omega, eq_serie_externos_A1, eq_paral_externos_A1, eq_serie_internos_A1, eq_serie_externos_A2, eq_paral_externos_A2, eq_serie_internos_A2, eq_serie_externos_B1, eq_paral_externos_B1, eq_serie_internos_B1, eq_serie_externos_B2, eq_paral_externos_B2, eq_serie_internos_B2, eq_serie_externos_C1, eq_paral_externos_C1, eq_serie_internos_C1, eq_serie_externos_C2, eq_paral_externos_C2, eq_serie_internos_C2):
+    I_a1, V_a1_ser, I_a1_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_A1, eq_paral_externos_A1, eq_serie_internos_A1)
+    I_a2, V_a2_ser, I_a2_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_A2, eq_paral_externos_A2, eq_serie_internos_A2)
+    I_a_par = np.concatenate((I_a1, I_a2), axis=1)
+    df_I_a_par = pd.DataFrame(I_a_par)
+
+    I_b1, V_b1_ser, I_b1_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_B1, eq_paral_externos_B1, eq_serie_internos_B1)
+    I_b2, V_b2_ser, I_b2_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_B2, eq_paral_externos_B2, eq_serie_internos_B2)
+    I_b_par = np.concatenate((I_b1, I_b2), axis=1)
+    df_I_b_par = pd.DataFrame(I_b_par)
+
+    I_c1, V_c1_ser, I_c1_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_C1, eq_paral_externos_C1, eq_serie_internos_C1)
+    I_c2, V_c2_ser, I_c2_par = calcular_corrente_tensao(V_ao, omega, eq_serie_externos_C2, eq_paral_externos_C2, eq_serie_internos_C2)
+    I_c_par = np.concatenate((I_c1, I_c2), axis=1)
+    df_I_c_par = pd.DataFrame(I_c_par)
+
+    return [df_I_a_par, df_I_b_par, df_I_c_par]
