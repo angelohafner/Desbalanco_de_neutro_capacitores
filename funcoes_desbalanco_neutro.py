@@ -4,21 +4,34 @@ import numpy as np
 import pandas as pd
 from openpyxl import load_workbook, Workbook
 from openpyxl.utils import get_column_letter
-from openpyxl.utils import get_column_letter
 from openpyxl.styles import PatternFill, Font, Color, Alignment
 from openpyxl.styles.differential import DifferentialStyle
 from openpyxl.formatting.rule import Rule, ColorScaleRule
+from openpyxl import load_workbook
+from openpyxl.utils.dataframe import dataframe_to_rows
+from openpyxl.styles import PatternFill
+from openpyxl.styles import Font, Color
+import colorsys
+
+
+
+# %%
+
 
 
 # %%
 def destaca_maiores_que_nominal(planilha='Ia1', aquivo='correntes.xlsx', valor_nominal=10.1):
     wb = load_workbook(aquivo)
     ws = wb[planilha]
+    # Cria um objeto de preenchimento de cor com a cor vermelha utilizando a biblioteca openpyxl.styles.
     red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
+    # Cria um estilo diferencial com o preenchimento de cor vermelha definido anteriormente.
     dxf = DifferentialStyle(fill=red_fill)
-    rule = ColorScaleRule(start_type="min", start_color="FFFF99",
+    # Cria uma regra de formatação condicional para aplicar um gradiente de cor do azul ao vermelho.
+    rule = ColorScaleRule(start_type="min", start_color="0000FF",
                           end_type="max", end_color="FF0000")
     ws.conditional_formatting.add("A1:Z26", rule)
+    
     wb.save(aquivo)
 
 

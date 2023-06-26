@@ -11,6 +11,7 @@ from engineering_notation import EngNumber
 from funcoes_desbalanco_neutro import *
 
 
+
 # %%
 a = 1*np.exp(1j*2*np.pi/3)
 nr_lin_int = 5
@@ -29,7 +30,7 @@ corrente_nominal_lata = corrente_fase_neutro
 
 cap_total = 1 / (omega*reatancia)
 cap_interna = cap_total * (nr_lin_int + nr_lin_ext) / (nr_col_int + nr_col_ext)
-des_int = 0.0
+des_int = 0.2
 
 print("cap_total = ", cap_total)
 print("cap_interna*2 = ", EngNumber(2*cap_interna))
@@ -107,19 +108,39 @@ V_a1_ser_ext = I_a1_ext / (1j*omega*eq_paral_externos_A1)
 I_a1_par_ext = V_a1_ser_ext * (1j*omega*eq_serie_internos_A1)
 
 # AGORA VAMOS PARA OS INTERNOS
-I_a1_ser_int = np.ones((nr_lin_ext, nr_col_ext, nr_lin_int, nr_col_int), dtype='complex')
+I_a1_par_int = np.ones((nr_lin_ext, nr_col_ext, nr_lin_int, nr_col_int), dtype='complex')
 V_a1_ser_int = np.ones((nr_lin_ext, nr_col_ext, nr_lin_int), dtype='complex')
 for i_ext in range(nr_lin_ext):
     for j_ext in range(nr_col_ext):
         # capacitores internos em série
         V_a1_ser_int[i_ext, j_ext, :] = I_a1_par_ext[i_ext, j_ext] / (1j * omega * eq_paral_internos_A1[i_ext, j_ext, :])
+        I_a1_par_int[i_ext, j_ext, :, :] = V_a1_ser_int[i_ext, j_ext, :].reshape(-1, 1) * (1j*super_matriz_A1[i_ext, j_ext, :, :])
+
+I_a1_par_int_excel = np.ones((nr_lin_ext*nr_lin_int, nr_col_ext*nr_col_int), dtype='complex')
+for i_ext in range(nr_lin_ext):
+    for j_ext in range(nr_col_ext):
+        rs = i_ext * nr_lin_int
+        re = rs + nr_lin_int
+        cs = j_ext * nr_col_int
+        ce = cs + nr_col_int
+        I_a1_par_int_excel[rs:re, cs:ce] = I_a1_par_int[i_ext, j_ext, :, :]
 
 
+df_I_a1_par_int_excel = pd.DataFrame(np.abs(I_a1_par_int_excel))
+filename = 'correntes.xlsx'
+sheetname = 'internos-a'
 
 
+with pd.ExcelWriter(filename, engine='openpyxl') as writer:
+    df_I_a1_par_int_excel.to_excel(writer, sheet_name=sheetname, index=False, header=False)
+destaca_maiores_que_nominal(planilha=sheetname, aquivo=filename)
 
-
-
+df_I_a1_par_ext = pd.DataFrame(np.abs(I_a1_par_ext))
+filename = 'correntes.xlsx'
+sheetname = 'externos-a'
+with pd.ExcelWriter(filename, engine='openpyxl', mode='a') as writer:
+    df_I_a1_par_ext.to_excel(writer, sheet_name=sheetname, index=False, header=False)
+destaca_maiores_que_nominal(planilha=sheetname, aquivo=filename)
 
 
 
