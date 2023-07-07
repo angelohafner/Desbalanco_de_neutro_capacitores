@@ -12,6 +12,7 @@ from openpyxl.utils.dataframe import dataframe_to_rows
 from openpyxl.styles import PatternFill
 from openpyxl.styles import Font, Color
 import colorsys
+import copy
 
 
 
@@ -20,19 +21,34 @@ import colorsys
 
 
 # %%
-def destaca_maiores_que_nominal(planilha='Ia1', aquivo='correntes.xlsx', valor_nominal=10.1):
+def exporta_para_excel(planilha='Ia1', aquivo='correntes.xlsx', valor_nominal=10.1):
     wb = load_workbook(aquivo)
     ws = wb[planilha]
-    # Cria um objeto de preenchimento de cor com a cor vermelha utilizando a biblioteca openpyxl.styles.
-    red_fill = PatternFill(start_color="FF0000", end_color="FF0000", fill_type="solid")
-    # Cria um estilo diferencial com o preenchimento de cor vermelha definido anteriormente.
-    dxf = DifferentialStyle(fill=red_fill)
-    # Cria uma regra de formatação condicional para aplicar um gradiente de cor do azul ao vermelho.
-    rule = ColorScaleRule(start_type="min", start_color="0000FF",
-                          end_type="max", end_color="FF0000")
-    ws.conditional_formatting.add("A1:Z26", rule)
-    
-    wb.save(aquivo)
+    # Carregar a pasta de trabalho de origem e a planilha
+    src_wb = load_workbook('matriz_total.xlsx')
+    src_ws = src_wb['A']
+
+    # Carregar a pasta de trabalho de destino e a planilha
+    dest_wb = load_workbook(aquivo)
+    dest_ws = dest_wb[planilha]
+
+    # Iterar sobre todas as células na planilha de origem
+    for row in src_ws.iter_rows():
+        for cell in row:
+            # Obter a célula correspondente na planilha de destino
+            dest_cell = dest_ws[cell.coordinate]
+
+            # Copiar a formatação da célula de origem para a célula de destino
+            dest_cell.font = copy.copy(cell.font)
+            dest_cell.border = copy.copy(cell.border)
+            dest_cell.fill = copy.copy(cell.fill)
+            dest_cell.number_format = cell.number_format
+            dest_cell.protection = copy.copy(cell.protection)
+            dest_cell.alignment = copy.copy(cell.alignment)
+            dest_cell.number_format = "##0.0E+00"
+
+    # Salvar a pasta de trabalho de destino
+    dest_wb.save(aquivo)
 
 
 # %%
